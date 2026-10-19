@@ -1,0 +1,4 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: java-api}
+spec: {selector: {matchLabels: {app: java-api}}, template: {metadata: {labels: {app: java-api}}, spec: {containers: [{name: api, image: ghcr.io/bckish/java-api:1.0.0, ports: [{containerPort: 8080}]}]}}}
