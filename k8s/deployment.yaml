@@ -1,4 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: java-api}
-spec: {selector: {matchLabels: {app: java-api}}, template: {metadata: {labels: {app: java-api}}, spec: {containers: [{name: api, image: ghcr.io/bckish/java-api:1.0.0, ports: [{containerPort: 8080}]}]}}}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: java-api}}
+  template:
+    metadata: {labels: {app: java-api}}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: java-ledger:local
+          imagePullPolicy: IfNotPresent
+          ports: [{name: http, containerPort: 8080}]
+          startupProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 2, failureThreshold: 60}
+          readinessProbe: {httpGet: {path: /readyz, port: http}}
+          livenessProbe: {httpGet: {path: /healthz, port: http}}
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {cpu: '1', memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 64Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: java-api}
+spec:
+  type: ClusterIP
+  selector: {app: java-api}
+  ports: [{name: http, port: 8080, targetPort: http}]
